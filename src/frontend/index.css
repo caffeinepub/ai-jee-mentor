@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+@font-face {
+  font-family: 'BricolageGrotesque';
+  src: url('/assets/fonts/BricolageGrotesque.woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PlusJakartaSans';
+  src: url('/assets/fonts/PlusJakartaSans.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GeistMono';
+  src: url('/assets/fonts/GeistMono.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0.13 0.04 252;
+    --foreground: 0.97 0.01 252;
+    --card: 0.17 0.035 252;
+    --card-foreground: 0.97 0.01 252;
+    --popover: 0.17 0.035 252;
+    --popover-foreground: 0.97 0.01 252;
+    --primary: 0.72 0.155 215;
+    --primary-foreground: 0.1 0.02 252;
+    --secondary: 0.22 0.04 252;
+    --secondary-foreground: 0.92 0.01 252;
+    --muted: 0.22 0.03 252;
+    --muted-foreground: 0.62 0.03 252;
+    --accent: 0.78 0.12 195;
+    --accent-foreground: 0.1 0.02 252;
+    --destructive: 0.58 0.22 27;
+    --destructive-foreground: 0.97 0.01 252;
+    --border: 0.28 0.04 252;
+    --input: 0.22 0.04 252;
+    --ring: 0.72 0.155 215;
+    --radius: 0.75rem;
+    --chart-1: 0.72 0.155 215;
+    --chart-2: 0.78 0.12 195;
+    --chart-3: 0.68 0.15 240;
+    --chart-4: 0.85 0.10 200;
+    --chart-5: 0.55 0.18 280;
+    --sidebar: 0.15 0.04 252;
+    --sidebar-foreground: 0.97 0.01 252;
+    --sidebar-primary: 0.72 0.155 215;
+    --sidebar-primary-foreground: 0.1 0.02 252;
+    --sidebar-accent: 0.22 0.04 252;
+    --sidebar-accent-foreground: 0.92 0.01 252;
+    --sidebar-border: 0.28 0.04 252;
+    --sidebar-ring: 0.72 0.155 215;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'PlusJakartaSans', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'BricolageGrotesque', sans-serif;
+  }
+}
+
+@keyframes float-formula {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px oklch(0.72 0.155 215 / 0.3); }
+  50% { box-shadow: 0 0 40px oklch(0.72 0.155 215 / 0.6), 0 0 60px oklch(0.78 0.12 195 / 0.3); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes typing-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.float-formula {
+  animation: float-formula linear infinite;
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  color: oklch(0.72 0.155 215 / 0.5);
+  font-family: 'GeistMono', monospace;
+  font-size: 1rem;
+}
+
+.glow-card {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
+}
+
+.glass-card {
+  background: oklch(0.17 0.035 252 / 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.28 0.04 252 / 0.8);
+}
+
+.sky-gradient {
+  background: linear-gradient(135deg, oklch(0.72 0.155 215 / 0.15) 0%, oklch(0.78 0.12 195 / 0.08) 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, oklch(0.72 0.155 215), oklch(0.85 0.10 200));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-bg {
+  background: radial-gradient(ellipse at 20% 50%, oklch(0.22 0.08 230 / 0.4) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, oklch(0.18 0.06 215 / 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 100%, oklch(0.15 0.04 252 / 0.5) 0%, transparent 70%),
+              oklch(0.13 0.04 252);
+}
+
+.nav-blur {
+  background: oklch(0.13 0.04 252 / 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid oklch(0.28 0.04 252 / 0.6);
+}
+
+.typing-cursor::after {
+  content: '|';
+  animation: typing-cursor 1s ease-in-out infinite;
+  color: oklch(0.72 0.155 215);
+}
+
+.solution-step {
+  animation: slide-up 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+.solution-step:nth-child(1) { animation-delay: 0.1s; }
+.solution-step:nth-child(2) { animation-delay: 0.4s; }
+.solution-step:nth-child(3) { animation-delay: 0.7s; }
+.solution-step:nth-child(4) { animation-delay: 1.0s; }
+.solution-step:nth-child(5) { animation-delay: 1.3s; }
+.solution-step:nth-child(6) { animation-delay: 1.6s; }
