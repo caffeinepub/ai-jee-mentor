@@ -61,6 +61,27 @@ const SKELETON_WIDTHS = [
 
 type CapturedImage = { id: string; file: File };
 
+function parseAiResponse(response: string): string {
+  try {
+    const parsed = JSON.parse(response);
+    // OpenAI-compatible chat completions format
+    if (parsed?.choices?.[0]?.message?.content) {
+      return parsed.choices[0].message.content;
+    }
+    // Legacy HF inference format
+    if (Array.isArray(parsed) && parsed[0]?.generated_text) {
+      return parsed[0].generated_text;
+    }
+    // Error response
+    if (parsed?.error) {
+      return `Error: ${parsed.error}`;
+    }
+  } catch {
+    // not JSON, return as-is
+  }
+  return response;
+}
+
 export default function SolverSection() {
   const { actor } = useActor();
   const [question, setQuestion] = useState("");
@@ -94,15 +115,11 @@ export default function SolverSection() {
     try {
       if (!actor) throw new Error("Backend not ready. Please try again.");
       const response = await actor.solveQuestion(question, subject, topic);
-      try {
-        const parsed = JSON.parse(response);
-        if (Array.isArray(parsed) && parsed[0]?.generated_text) {
-          setAiResponse(parsed[0].generated_text);
-        } else {
-          setAiResponse(response);
-        }
-      } catch {
-        setAiResponse(response);
+      const parsed = parseAiResponse(response);
+      if (parsed.startsWith("Error:")) {
+        setSolveError(parsed);
+      } else {
+        setAiResponse(parsed);
       }
     } catch (e: any) {
       setSolveError(
