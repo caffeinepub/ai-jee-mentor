@@ -72,9 +72,13 @@ function parseAiResponse(response: string): string {
     if (Array.isArray(parsed) && parsed[0]?.generated_text) {
       return parsed[0].generated_text;
     }
-    // Error response
+    // Error response — Groq returns { error: { message: "...", type: "..." } }
     if (parsed?.error) {
-      return `Error: ${parsed.error}`;
+      const errMsg =
+        typeof parsed.error === "string"
+          ? parsed.error
+          : parsed.error?.message || JSON.stringify(parsed.error);
+      return `Error: ${errMsg}`;
     }
   } catch {
     // not JSON, return as-is
@@ -122,9 +126,11 @@ export default function SolverSection() {
         setAiResponse(parsed);
       }
     } catch (e: any) {
-      setSolveError(
-        e?.message || "Failed to get AI response. Please try again.",
-      );
+      const msg =
+        e?.message ||
+        (typeof e === "string" ? e : JSON.stringify(e)) ||
+        "Failed to get AI response. Please try again.";
+      setSolveError(msg);
     } finally {
       setSolving(false);
     }
