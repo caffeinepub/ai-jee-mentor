@@ -67,6 +67,7 @@ export interface backendInterface {
     getQuestionsBySubject(subject: Subject): Promise<Array<Question>>;
     getQuestionsByTopic(topic: string): Promise<Array<Question>>;
     solveQuestion(question: string, subject: string, topic: string): Promise<string>;
+    solveQuestionWithImage(question: string, subject: string, topic: string, imageBase64: string, mediaType: string): Promise<string>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateProgress(solvedQuestions: {
         math: bigint;

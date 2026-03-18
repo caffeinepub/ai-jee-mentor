@@ -3,6 +3,7 @@ import FeaturesSection from "./components/FeaturesSection";
 import Footer from "./components/Footer";
 import FutureSection from "./components/FutureSection";
 import HeroSection from "./components/HeroSection";
+import MarqueeStrip from "./components/MarqueeStrip";
 import Navbar from "./components/Navbar";
 import PracticeSection from "./components/PracticeSection";
 import SolverSection from "./components/SolverSection";
@@ -14,6 +15,7 @@ export default function App() {
       <Navbar />
       <main>
         <HeroSection />
+        <MarqueeStrip />
         <FeaturesSection />
         <SubjectsSection />
         <DashboardSection />

@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Brain, Menu, Search, X } from "lucide-react";
+import { Brain, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const navLinks = [
@@ -15,11 +14,15 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 20);
+      const docH = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docH > 0 ? (window.scrollY / docH) * 100 : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -35,6 +38,15 @@ export default function Navbar() {
         scrolled ? "nav-blur" : "bg-transparent"
       }`}
     >
+      {/* Scroll progress bar */}
+      <div
+        className="absolute top-0 left-0 h-[1px] transition-all duration-150 ease-out pointer-events-none"
+        style={{
+          width: `${scrollProgress}%`,
+          background: "oklch(0.85 0.008 250)",
+        }}
+      />
+
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
         <button
@@ -42,11 +54,11 @@ export default function Navbar() {
           className="flex items-center gap-2 flex-shrink-0"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
-          <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center">
-            <Brain className="w-4 h-4 text-primary" />
+          <div className="w-8 h-8 rounded-sm bg-white/8 border border-white/10 flex items-center justify-center">
+            <Brain className="w-4 h-4 text-foreground" />
           </div>
-          <span className="font-display font-bold text-lg text-foreground">
-            AI JEE<span className="text-gradient"> Mentor</span>
+          <span className="font-display font-bold text-lg text-foreground tracking-tight">
+            AI JEE Mentor
           </span>
         </button>
 
@@ -58,65 +70,56 @@ export default function Navbar() {
               key={link.href}
               data-ocid={`nav.link.${i + 1}`}
               onClick={() => handleNavClick(link.href)}
-              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-white/5"
             >
               {link.label}
             </button>
           ))}
         </div>
 
-        {/* Search */}
-        <div className="hidden sm:flex flex-1 max-w-xs">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              data-ocid="nav.search_input"
-              placeholder="Search concepts, formulas..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-muted/50 border-border/50 text-sm h-9 focus:border-primary/50"
-            />
+        {/* Right side: status pill + mobile toggle */}
+        <div className="flex items-center gap-3">
+          <div className="status-pill hidden sm:flex">
+            <span className="status-dot" />
+            AI · Online
           </div>
-        </div>
 
-        {/* Mobile menu toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
-        </Button>
+          {/* Mobile menu toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
       </nav>
 
       {/* Mobile Nav */}
       {mobileOpen && (
-        <div className="md:hidden nav-blur border-t border-border/50 px-4 py-4 flex flex-col gap-2">
-          <div className="relative mb-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              className="pl-9 bg-muted/50"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+        <div className="md:hidden nav-blur border-t border-border/50 px-4 py-4 flex flex-col gap-1">
           {navLinks.map((link, i) => (
             <button
               type="button"
               key={link.href}
               data-ocid={`nav.link.${i + 1}`}
               onClick={() => handleNavClick(link.href)}
-              className="text-left px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+              className="text-left px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-sm hover:bg-white/5"
             >
               {link.label}
             </button>
           ))}
+          <div className="pt-3 px-3">
+            <div className="status-pill inline-flex">
+              <span className="status-dot" />
+              AI · Online
+            </div>
+          </div>
         </div>
       )}
     </header>

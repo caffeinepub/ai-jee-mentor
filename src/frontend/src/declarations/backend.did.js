@@ -81,6 +81,11 @@ export const idlService = IDL.Service({
   'getQuestionsBySubject' : IDL.Func([Subject], [IDL.Vec(Question)], ['query']),
   'getQuestionsByTopic' : IDL.Func([IDL.Text], [IDL.Vec(Question)], ['query']),
   'solveQuestion' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Text], []),
+  'solveQuestionWithImage' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
@@ -188,6 +193,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'solveQuestion' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Text], []),
+    'solveQuestionWithImage' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],

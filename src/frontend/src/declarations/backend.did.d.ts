@@ -62,6 +62,7 @@ export interface _SERVICE {
   'getQuestionsBySubject' : ActorMethod<[Subject], Array<Question>>,
   'getQuestionsByTopic' : ActorMethod<[string], Array<Question>>,
   'solveQuestion' : ActorMethod<[string, string, string], string>,
+  'solveQuestionWithImage' : ActorMethod<[string, string, string, string, string], string>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'updateProgress' : ActorMethod<
     [

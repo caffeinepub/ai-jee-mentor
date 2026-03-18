@@ -16,14 +16,20 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useActor } from "@/hooks/useActor";
 import {
+  BookOpen,
   Camera,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
   FlipHorizontal,
+  Lightbulb,
   Loader2,
   Sparkles,
-  Upload,
+  Trash2,
   X,
+  Zap,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 
 const topicsBySubject: Record<string, string[]> = {
   Physics: [
@@ -59,20 +65,225 @@ const SKELETON_WIDTHS = [
   { id: "sk4", w: "90%" },
 ];
 
+const HISTORY_KEY = "jee_chat_history";
+const MAX_HISTORY = 6;
+const CONTEXT_TURNS = 3;
+const RETRY_DELAY_MS = 3000;
+
 type CapturedImage = { id: string; file: File };
 
+interface HistoryEntry {
+  question: string;
+  images: string[];
+  response: string;
+  subject: string;
+  topic: string;
+  timestamp: number;
+}
+
+// Section types for structured AI responses
+type SectionType =
+  | "THOUGHT_PROCESS"
+  | "CONCEPT"
+  | "SOLUTION"
+  | "ANSWER"
+  | "JEE_TIP"
+  | "GENERAL";
+
+interface ResponseSection {
+  type: SectionType;
+  lines: string[];
+}
+
+function isCanisterStoppedError(e: unknown): boolean {
+  const msg =
+    (e as { message?: string })?.message ||
+    (typeof e === "string" ? e : JSON.stringify(e));
+  return (
+    msg.includes("IC0508") ||
+    msg.includes("is stopped") ||
+    (msg.includes("Canister") && msg.includes("stopped"))
+  );
+}
+
+/**
+ * Convert LaTeX math notation to plain readable text.
+ */
+function convertLatexToPlain(text: string): string {
+  let t = text;
+
+  t = t.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => inner.trim());
+  t = t.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => inner.trim());
+  t = t.replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => inner.trim());
+  t = t.replace(/\$([^$\n]+?)\$/g, (_, inner) => inner.trim());
+  t = t.replace(/\\(?:text|mathrm|mathbf|mathit|mathbb)\{([^}]*)\}/g, "$1");
+  t = t.replace(/\\left\s*\(/g, "(");
+  t = t.replace(/\\right\s*\)/g, ")");
+  t = t.replace(/\\left\s*\[/g, "[");
+  t = t.replace(/\\right\s*\]/g, "]");
+  t = t.replace(/\\left\s*\{/g, "{");
+  t = t.replace(/\\right\s*\}/g, "}");
+  t = t.replace(/\\left\s*\|/g, "|");
+  t = t.replace(/\\right\s*\|/g, "|");
+  t = t.replace(/\\left\s*\./g, "");
+  t = t.replace(/\\right\s*\./g, "");
+
+  const fracRegex = /\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g;
+  let prev = "";
+  while (prev !== t) {
+    prev = t;
+    t = t.replace(fracRegex, (_, num, den) => `(${num}/${den})`);
+  }
+
+  t = t.replace(/\\sqrt\{([^}]*)\}/g, "√($1)");
+  t = t.replace(/\\sqrt\s+([^\s{]+)/g, "√$1");
+  t = t.replace(/\^\{2\}/g, "²");
+  t = t.replace(/\^\{3\}/g, "³");
+  t = t.replace(/\^\{-1\}/g, "⁻¹");
+  t = t.replace(/\^\{([^}]+)\}/g, "^$1");
+  t = t.replace(/\^2(?![\d}])/g, "²");
+  t = t.replace(/\^3(?![\d}])/g, "³");
+  t = t.replace(/_\{([^}]+)\}/g, "_$1");
+  t = t.replace(/\\vec\{([^}]*)\}/g, "$1");
+  t = t.replace(/\\hat\{([^}]*)\}/g, "$1^");
+  t = t.replace(/\\overline\{([^}]*)\}/g, "$1");
+  t = t.replace(/\\qquad/g, "  ");
+  t = t.replace(/\\quad/g, " ");
+  t = t.replace(/\\,/g, " ");
+  t = t.replace(/\\;/g, " ");
+  t = t.replace(/\\:/g, " ");
+  t = t.replace(/\\!/g, "");
+  t = t.replace(/\\ /g, " ");
+  t = t.replace(/\\alpha/g, "α");
+  t = t.replace(/\\beta/g, "β");
+  t = t.replace(/\\gamma/g, "γ");
+  t = t.replace(/\\delta/g, "δ");
+  t = t.replace(/\\epsilon/g, "ε");
+  t = t.replace(/\\varepsilon/g, "ε");
+  t = t.replace(/\\zeta/g, "ζ");
+  t = t.replace(/\\eta/g, "η");
+  t = t.replace(/\\theta/g, "θ");
+  t = t.replace(/\\vartheta/g, "θ");
+  t = t.replace(/\\iota/g, "ι");
+  t = t.replace(/\\kappa/g, "κ");
+  t = t.replace(/\\lambda/g, "λ");
+  t = t.replace(/\\mu/g, "μ");
+  t = t.replace(/\\nu/g, "ν");
+  t = t.replace(/\\xi/g, "ξ");
+  t = t.replace(/\\pi/g, "π");
+  t = t.replace(/\\varpi/g, "π");
+  t = t.replace(/\\rho/g, "ρ");
+  t = t.replace(/\\varrho/g, "ρ");
+  t = t.replace(/\\sigma/g, "σ");
+  t = t.replace(/\\varsigma/g, "ς");
+  t = t.replace(/\\tau/g, "τ");
+  t = t.replace(/\\upsilon/g, "υ");
+  t = t.replace(/\\phi/g, "φ");
+  t = t.replace(/\\varphi/g, "φ");
+  t = t.replace(/\\chi/g, "χ");
+  t = t.replace(/\\psi/g, "ψ");
+  t = t.replace(/\\omega/g, "ω");
+  t = t.replace(/\\Gamma/g, "Γ");
+  t = t.replace(/\\Delta/g, "Δ");
+  t = t.replace(/\\Theta/g, "Θ");
+  t = t.replace(/\\Lambda/g, "Λ");
+  t = t.replace(/\\Xi/g, "Ξ");
+  t = t.replace(/\\Pi/g, "Π");
+  t = t.replace(/\\Sigma/g, "Σ");
+  t = t.replace(/\\Upsilon/g, "Υ");
+  t = t.replace(/\\Phi/g, "Φ");
+  t = t.replace(/\\Psi/g, "Ψ");
+  t = t.replace(/\\Omega/g, "Ω");
+  t = t.replace(/\\times/g, "×");
+  t = t.replace(/\\div/g, "÷");
+  t = t.replace(/\\cdot/g, "·");
+  t = t.replace(/\\cdots/g, "…");
+  t = t.replace(/\\ldots/g, "…");
+  t = t.replace(/\\pm/g, "±");
+  t = t.replace(/\\mp/g, "∓");
+  t = t.replace(/\\geq/g, "≥");
+  t = t.replace(/\\ge/g, "≥");
+  t = t.replace(/\\leq/g, "≤");
+  t = t.replace(/\\le/g, "≤");
+  t = t.replace(/\\neq/g, "≠");
+  t = t.replace(/\\ne/g, "≠");
+  t = t.replace(/\\approx/g, "≈");
+  t = t.replace(/\\equiv/g, "≡");
+  t = t.replace(/\\propto/g, "∝");
+  t = t.replace(/\\infty/g, "∞");
+  t = t.replace(/\\partial/g, "∂");
+  t = t.replace(/\\nabla/g, "∇");
+  t = t.replace(/\\sum/g, "Σ");
+  t = t.replace(/\\int/g, "∫");
+  t = t.replace(/\\oint/g, "∮");
+  t = t.replace(/\\prod/g, "Π");
+  t = t.replace(/\\rightarrow/g, "→");
+  t = t.replace(/\\to(?![a-z])/g, "→");
+  t = t.replace(/\\leftarrow/g, "←");
+  t = t.replace(/\\Rightarrow/g, "⟹");
+  t = t.replace(/\\Leftarrow/g, "⟸");
+  t = t.replace(/\\leftrightarrow/g, "↔");
+  t = t.replace(/\\Leftrightarrow/g, "⟺");
+  t = t.replace(/\\uparrow/g, "↑");
+  t = t.replace(/\\downarrow/g, "↓");
+  t = t.replace(/\\in/g, "∈");
+  t = t.replace(/\\notin/g, "∉");
+  t = t.replace(/\\subset/g, "⊂");
+  t = t.replace(/\\supset/g, "⊃");
+  t = t.replace(/\\cup/g, "∪");
+  t = t.replace(/\\cap/g, "∩");
+  t = t.replace(/\\therefore/g, "∴");
+  t = t.replace(/\\because/g, "∵");
+  t = t.replace(/\\forall/g, "∀");
+  t = t.replace(/\\exists/g, "∃");
+  t = t.replace(/\\perp/g, "⊥");
+  t = t.replace(/\\parallel/g, "∥");
+  t = t.replace(/\\angle/g, "∠");
+  t = t.replace(/\\triangle/g, "△");
+  t = t.replace(/\\circ/g, "°");
+  t = t.replace(/\\degree/g, "°");
+  t = t.replace(
+    /\\(sin|cos|tan|cot|sec|csc|arcsin|arccos|arctan|sinh|cosh|tanh|log|ln|exp|lim|max|min|det|dim|ker|mod|gcd)(?=[^a-z]|$)/g,
+    "$1",
+  );
+  t = t.replace(/\\hline/g, "");
+  t = t.replace(/\\{2}/g, "\n");
+  t = t.replace(/&/g, " ");
+  t = t.replace(/\\[a-zA-Z]+/g, "");
+  t = t.replace(/ {2,}/g, " ");
+
+  return t.trim();
+}
+
+/**
+ * Extract usable text from the OpenRouter/OpenAI API response.
+ * Handles models that return answer in `content` (normal) or `reasoning` (o-series / gpt-oss).
+ */
 function parseAiResponse(response: string): string {
   try {
     const parsed = JSON.parse(response);
-    // OpenAI-compatible chat completions format
-    if (parsed?.choices?.[0]?.message?.content) {
-      return parsed.choices[0].message.content;
+    const msg = parsed?.choices?.[0]?.message;
+    if (msg) {
+      // Standard: content field
+      if (
+        msg.content &&
+        typeof msg.content === "string" &&
+        msg.content.trim()
+      ) {
+        return convertLatexToPlain(msg.content);
+      }
+      // Reasoning models (o-series, gpt-oss-120b): answer is in reasoning field
+      if (
+        msg.reasoning &&
+        typeof msg.reasoning === "string" &&
+        msg.reasoning.trim()
+      ) {
+        return convertLatexToPlain(msg.reasoning);
+      }
     }
-    // Legacy HF inference format
     if (Array.isArray(parsed) && parsed[0]?.generated_text) {
-      return parsed[0].generated_text;
+      return convertLatexToPlain(parsed[0].generated_text);
     }
-    // Error response — Groq returns { error: { message: "...", type: "..." } }
     if (parsed?.error) {
       const errMsg =
         typeof parsed.error === "string"
@@ -83,7 +294,394 @@ function parseAiResponse(response: string): string {
   } catch {
     // not JSON, return as-is
   }
-  return response;
+  return convertLatexToPlain(response);
+}
+
+async function compressImageToBase64(
+  file: File,
+): Promise<{ base64: string; mediaType: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxDim = 800;
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas context unavailable"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+      URL.revokeObjectURL(objectUrl);
+      const base64 = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
+      resolve({ base64, mediaType: "image/jpeg" });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = objectUrl;
+  });
+}
+
+function parseBold(text: string, keyPrefix: string): (string | ReactElement)[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  const result: (string | ReactElement)[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part.startsWith("**") && part.endsWith("**")) {
+      result.push(
+        <strong
+          key={`${keyPrefix}-b${i}`}
+          className="font-semibold text-foreground"
+        >
+          {part.slice(2, -2)}
+        </strong>,
+      );
+    } else {
+      result.push(part);
+    }
+  }
+  return result;
+}
+
+function detectSectionType(line: string): SectionType | null {
+  const clean = line.trim();
+  if (/^\*\*THOUGHT\s+PROCESS\*\*/i.test(clean)) return "THOUGHT_PROCESS";
+  if (/^\*\*CONCEPT\*\*/i.test(clean)) return "CONCEPT";
+  if (/^\*\*SOLUTION\*\*/i.test(clean)) return "SOLUTION";
+  if (/^\*\*ANSWER\*\*/i.test(clean)) return "ANSWER";
+  if (/^\*\*JEE\s+TIP\*\*/i.test(clean)) return "JEE_TIP";
+  return null;
+}
+
+function parseIntoSections(text: string): ResponseSection[] {
+  const lines = text.split("\n");
+  const sections: ResponseSection[] = [];
+  let current: ResponseSection = { type: "GENERAL", lines: [] };
+
+  for (const line of lines) {
+    const detected = detectSectionType(line);
+    if (detected) {
+      if (current.lines.some((l) => l.trim())) {
+        sections.push(current);
+      }
+      current = { type: detected, lines: [] };
+    } else {
+      current.lines.push(line);
+    }
+  }
+  if (current.lines.some((l) => l.trim())) {
+    sections.push(current);
+  }
+  return sections;
+}
+
+function renderSolutionLines(lines: string[]): ReactElement {
+  const elements: ReactElement[] = [];
+  let stepCounter = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const stepMatch = line.match(/^(\d+)[.)]\s+(.+)/);
+    if (stepMatch) {
+      stepCounter++;
+      const stepNum = stepCounter;
+      const stepText = stepMatch[2];
+      elements.push(
+        <div
+          key={`step-${i}`}
+          className="flex gap-3 items-start py-3 border-b border-border/30 last:border-0"
+        >
+          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">
+            {stepNum}
+          </span>
+          <p className="text-sm text-foreground leading-relaxed flex-1">
+            {parseBold(stepText, `s${i}`)}
+          </p>
+        </div>,
+      );
+      continue;
+    }
+
+    const headerMatch = line.match(/^\*\*([^*:]+:?)\*\*(.*)$/);
+    if (headerMatch) {
+      elements.push(
+        <div key={`sh-${i}`} className="pt-2 pb-1">
+          <span className="text-primary font-bold text-sm">
+            {headerMatch[1]}
+          </span>
+          {headerMatch[2] && (
+            <span className="text-sm text-foreground ml-1">
+              {parseBold(headerMatch[2], `shv${i}`)}
+            </span>
+          )}
+        </div>,
+      );
+      continue;
+    }
+
+    elements.push(
+      <p
+        key={`sl-${i}`}
+        className="text-sm text-foreground leading-relaxed py-1"
+      >
+        {parseBold(line, `sp${i}`)}
+      </p>,
+    );
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
+
+function renderPlainLines(lines: string[], italic = false): ReactElement {
+  const elements: ReactElement[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    elements.push(
+      <p
+        key={`pl-${i}`}
+        className={`text-sm leading-relaxed py-0.5 ${
+          italic ? "italic text-foreground/80" : "text-foreground"
+        }`}
+      >
+        {parseBold(line, `p${i}`)}
+      </p>,
+    );
+  }
+  return <div className="space-y-1">{elements}</div>;
+}
+
+const SECTION_CONFIG: Record<
+  SectionType,
+  {
+    label: string;
+    icon: ReactElement;
+    cardClass: string;
+    labelClass: string;
+    iconClass: string;
+  }
+> = {
+  THOUGHT_PROCESS: {
+    label: "Thought Process",
+    icon: <Lightbulb className="w-4 h-4" />,
+    cardClass:
+      "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-800/40",
+    labelClass: "text-amber-700 dark:text-amber-400",
+    iconClass: "text-amber-500",
+  },
+  CONCEPT: {
+    label: "Concept",
+    icon: <BookOpen className="w-4 h-4" />,
+    cardClass:
+      "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/40",
+    labelClass: "text-blue-700 dark:text-blue-400",
+    iconClass: "text-blue-500",
+  },
+  SOLUTION: {
+    label: "Solution",
+    icon: <Sparkles className="w-4 h-4" />,
+    cardClass: "bg-muted/30 border-border/40",
+    labelClass: "text-foreground",
+    iconClass: "text-primary",
+  },
+  ANSWER: {
+    label: "Answer",
+    icon: <CheckCircle className="w-4 h-4" />,
+    cardClass:
+      "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/40",
+    labelClass: "text-emerald-700 dark:text-emerald-400",
+    iconClass: "text-emerald-500",
+  },
+  JEE_TIP: {
+    label: "JEE Tip",
+    icon: <Zap className="w-4 h-4" />,
+    cardClass:
+      "bg-violet-50/60 dark:bg-violet-950/30 border-violet-200/60 dark:border-violet-800/40",
+    labelClass: "text-violet-700 dark:text-violet-400",
+    iconClass: "text-violet-500",
+  },
+  GENERAL: {
+    label: "",
+    icon: <></>,
+    cardClass: "bg-muted/30 border-border/40",
+    labelClass: "text-foreground",
+    iconClass: "text-primary",
+  },
+};
+
+function renderAiResponse(text: string): ReactElement {
+  const cleanText = convertLatexToPlain(text);
+  const sections = parseIntoSections(cleanText);
+
+  const hasStructure = sections.some((s) => s.type !== "GENERAL");
+  if (!hasStructure) {
+    const lines = cleanText.split("\n");
+    const elements: ReactElement[] = [];
+    let stepCounter = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const stepMatch = line.match(/^(\d+)[.)]\s+(.+)/);
+      if (stepMatch) {
+        stepCounter++;
+        const stepNum = stepCounter;
+        const stepText = stepMatch[2];
+        elements.push(
+          <div
+            key={`line-${i}`}
+            className="flex gap-3 items-start py-3 border-b border-border/30 last:border-0"
+          >
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center mt-0.5">
+              {stepNum}
+            </span>
+            <p className="text-sm text-foreground leading-relaxed flex-1">
+              {parseBold(stepText, `l${i}`)}
+            </p>
+          </div>,
+        );
+        continue;
+      }
+      const headerMatch = line.match(/^\*\*([^*:]+:?)\*\*(.*)$/);
+      if (headerMatch) {
+        elements.push(
+          <div key={`line-${i}`} className="pt-3 pb-1">
+            <span className="text-primary font-bold text-sm tracking-wide">
+              {headerMatch[1]}
+            </span>
+            {headerMatch[2] && (
+              <span className="text-sm text-foreground ml-1">
+                {parseBold(headerMatch[2], `h${i}`)}
+              </span>
+            )}
+          </div>,
+        );
+        continue;
+      }
+      elements.push(
+        <p
+          key={`line-${i}`}
+          className="text-sm text-foreground leading-relaxed py-1"
+        >
+          {parseBold(line, `p${i}`)}
+        </p>,
+      );
+    }
+    return (
+      <div className="rounded-xl bg-muted/30 border border-border/40 p-4 space-y-0.5">
+        {elements}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section, sectionIdx) => {
+        const cfg = SECTION_CONFIG[section.type];
+        const isAnswer = section.type === "ANSWER";
+
+        return (
+          <div
+            key={`section-${sectionIdx}-${section.type}`}
+            className={`rounded-xl border p-4 ${cfg.cardClass}`}
+          >
+            {section.type !== "GENERAL" && (
+              <div
+                className={`flex items-center gap-2 mb-3 pb-2 border-b border-current/10 ${cfg.iconClass}`}
+              >
+                <span className={cfg.iconClass}>{cfg.icon}</span>
+                <span
+                  className={`text-xs font-bold uppercase tracking-wider ${cfg.labelClass}`}
+                >
+                  {cfg.label}
+                </span>
+              </div>
+            )}
+            <div className={isAnswer ? "font-semibold text-base" : ""}>
+              {section.type === "SOLUTION"
+                ? renderSolutionLines(section.lines)
+                : renderPlainLines(
+                    section.lines,
+                    section.type === "THOUGHT_PROCESS",
+                  )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function HistoryCard({ entry, index }: { entry: HistoryEntry; index: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const plainResponse = convertLatexToPlain(entry.response);
+  const summary =
+    plainResponse.slice(0, 200) + (plainResponse.length > 200 ? "..." : "");
+
+  return (
+    <div
+      data-ocid={`history.item.${index + 1}`}
+      className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden"
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-start gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+      >
+        <Sparkles className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            {entry.subject && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+                {entry.subject}
+              </span>
+            )}
+            {entry.topic && (
+              <span className="text-xs text-muted-foreground">
+                {entry.topic}
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-medium text-foreground truncate">
+            {entry.question}
+          </p>
+          {!expanded && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {summary}
+            </p>
+          )}
+        </div>
+        <span className="flex-shrink-0 text-muted-foreground mt-0.5">
+          {expanded ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </span>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-border/30 pt-3">
+          {renderAiResponse(entry.response)}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function SolverSection() {
@@ -92,11 +690,27 @@ export default function SolverSection() {
   const [subject, setSubject] = useState("");
   const [topic, setTopic] = useState("");
   const [solving, setSolving] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [solveError, setSolveError] = useState<string | null>(null);
   const [capturedImages, setCapturedImages] = useState<CapturedImage[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>(() => {
+    try {
+      const stored = localStorage.getItem(HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch {
+      // localStorage unavailable
+    }
+  }, [history]);
 
   const {
     isActive,
@@ -111,6 +725,15 @@ export default function SolverSection() {
     canvasRef,
   } = useCamera({ facingMode: "environment" });
 
+  const buildContextualQuestion = (rawQuestion: string): string => {
+    const recent = history.slice(-CONTEXT_TURNS);
+    if (recent.length === 0) return rawQuestion;
+    const contextLines = recent
+      .map((e) => `Q: ${e.question}\nA: ${e.response.slice(0, 200)}`)
+      .join("\n");
+    return `[Previous Q&A context:\n${contextLines}\n]\nCurrent question: ${rawQuestion}`;
+  };
+
   const handleSolve = async () => {
     if (!question.trim() && !subject) return;
     setSolving(true);
@@ -118,20 +741,63 @@ export default function SolverSection() {
     setSolveError(null);
     try {
       if (!actor) throw new Error("Backend not ready. Please try again.");
-      const response = await actor.solveQuestion(question, subject, topic);
+
+      const contextualQuestion = buildContextualQuestion(question);
+
+      const callActor = async (): Promise<string> => {
+        if (capturedImages.length > 0) {
+          const { base64, mediaType } = await compressImageToBase64(
+            capturedImages[0].file,
+          );
+          return actor.solveQuestionWithImage(
+            contextualQuestion,
+            subject,
+            topic,
+            base64,
+            mediaType,
+          );
+        }
+        return actor.solveQuestion(contextualQuestion, subject, topic);
+      };
+
+      let response: string;
+      try {
+        response = await callActor();
+      } catch (e: unknown) {
+        if (isCanisterStoppedError(e)) {
+          setRetrying(true);
+          await new Promise((res) => setTimeout(res, RETRY_DELAY_MS));
+          setRetrying(false);
+          response = await callActor();
+        } else {
+          throw e;
+        }
+      }
+
       const parsed = parseAiResponse(response);
       if (parsed.startsWith("Error:")) {
         setSolveError(parsed);
       } else {
         setAiResponse(parsed);
+        const entry: HistoryEntry = {
+          question,
+          images: [],
+          response: parsed,
+          subject,
+          topic,
+          timestamp: Date.now(),
+        };
+        setHistory((prev) => [...prev, entry].slice(-MAX_HISTORY));
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { message?: string };
       const msg =
-        e?.message ||
+        err?.message ||
         (typeof e === "string" ? e : JSON.stringify(e)) ||
         "Failed to get AI response. Please try again.";
       setSolveError(msg);
     } finally {
+      setRetrying(false);
       setSolving(false);
     }
   };
@@ -161,6 +827,11 @@ export default function SolverSection() {
     setCapturedImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_KEY);
+  };
+
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
@@ -175,10 +846,36 @@ export default function SolverSection() {
             AI Question <span className="text-gradient">Solver</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Type or upload your question and get a detailed, step-by-step
-            solution instantly.
+            Type your question and get a detailed, step-by-step solution
+            instantly.
           </p>
         </div>
+
+        {history.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Previous Questions
+              </h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-ocid="history.delete_button"
+                onClick={clearHistory}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive h-7 px-2"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear History
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {history.map((entry, idx) => (
+                <HistoryCard key={entry.timestamp} entry={entry} index={idx} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="glass-card rounded-2xl p-6 sm:p-8">
           <Textarea
@@ -189,7 +886,6 @@ export default function SolverSection() {
             className="min-h-32 mb-4 bg-muted/40 border-border/60 resize-none text-sm focus:border-primary/50 placeholder:text-muted-foreground/60"
           />
 
-          {/* Image thumbnails */}
           {capturedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {capturedImages.map((img, displayIdx) => (
@@ -213,31 +909,6 @@ export default function SolverSection() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <button
-              type="button"
-              data-ocid="solver.upload_button"
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all text-sm text-muted-foreground hover:text-foreground"
-            >
-              <Upload className="w-4 h-4" />
-              Upload Image
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file)
-                  setCapturedImages((prev) => [
-                    ...prev,
-                    { id: `img-${Date.now()}`, file },
-                  ]);
-                e.target.value = "";
-              }}
-            />
-
             {isSupported && (
               <button
                 type="button"
@@ -298,18 +969,25 @@ export default function SolverSection() {
             {solving ? (
               <>
                 <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                Solving...
+                {retrying ? "Reconnecting..." : "Solving..."}
               </>
             ) : (
               <>
                 <Sparkles className="mr-2 w-4 h-4" />
-                Solve Question
+                {capturedImages.length > 0
+                  ? "Solve with Image"
+                  : "Solve Question"}
               </>
             )}
           </Button>
 
           {solving && (
             <div data-ocid="solver.loading_state" className="mt-6 space-y-3">
+              {retrying && (
+                <p className="text-xs text-muted-foreground text-center animate-pulse">
+                  Server restarting, retrying automatically...
+                </p>
+              )}
               {SKELETON_WIDTHS.map(({ id, w }) => (
                 <div
                   key={id}
@@ -337,17 +1015,48 @@ export default function SolverSection() {
                   AI Solution
                 </span>
               </div>
-              <div className="max-h-[500px] overflow-y-auto pr-1">
-                <pre className="text-sm text-foreground font-mono whitespace-pre-wrap leading-relaxed">
-                  {aiResponse}
-                </pre>
+              <div className="max-h-[600px] overflow-y-auto pr-1">
+                {renderAiResponse(aiResponse)}
               </div>
             </div>
           )}
         </div>
+
+        <div className="mt-8 rounded-xl border border-border/40 bg-muted/10 p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            How the AI remembers &amp; improves
+          </h3>
+          <ul className="text-xs text-muted-foreground space-y-1.5 leading-relaxed">
+            <li>
+              <strong className="text-foreground">Session memory:</strong> Your
+              last 3 questions are automatically sent as context so the AI gives
+              more coherent follow-up answers.
+            </li>
+            <li>
+              <strong className="text-foreground">Persistent history:</strong>{" "}
+              Up to 6 past Q&amp;As are stored in your browser and survive page
+              refreshes. Click any card above to re-read them.
+            </li>
+            <li>
+              <strong className="text-foreground">
+                Better prompts = better answers:
+              </strong>{" "}
+              Be specific -- mention the concept, what you tried, and where you
+              got stuck.
+            </li>
+            <li>
+              <strong className="text-foreground">Model training:</strong> The
+              underlying model (openai/gpt-oss-120b via OpenRouter) is a
+              pre-trained large language model and cannot be retrained from
+              within this app. To fine-tune on JEE data, collect question-answer
+              pairs and use Hugging Face AutoTrain or the OpenAI fine-tuning
+              API.
+            </li>
+          </ul>
+        </div>
       </div>
 
-      {/* Camera Modal */}
       <Dialog
         open={cameraOpen}
         onOpenChange={(open) => {

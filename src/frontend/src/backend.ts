@@ -149,6 +149,7 @@ export interface backendInterface {
     getQuestionsBySubject(subject: Subject): Promise<Array<Question>>;
     getQuestionsByTopic(topic: string): Promise<Array<Question>>;
     solveQuestion(question: string, subject: string, topic: string): Promise<string>;
+    solveQuestionWithImage(question: string, subject: string, topic: string, imageBase64: string, mediaType: string): Promise<string>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateProgress(solvedQuestions: {
         math: bigint;
@@ -272,6 +273,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.solveQuestion(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async solveQuestionWithImage(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.solveQuestionWithImage(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.solveQuestionWithImage(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }

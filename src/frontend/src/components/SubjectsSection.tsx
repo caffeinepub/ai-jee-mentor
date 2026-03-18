@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
 
 const subjects = {
   physics: [
@@ -135,17 +136,27 @@ const subjects = {
 };
 
 export default function SubjectsSection() {
+  const [activeTab, setActiveTab] = useState<
+    "physics" | "chemistry" | "mathematics"
+  >("physics");
+  const [tabKey, setTabKey] = useState(0);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as "physics" | "chemistry" | "mathematics");
+    setTabKey((k) => k + 1);
+  };
+
   return (
-    <section id="subjects" className="py-24 bg-muted/20">
+    <section id="subjects" className="py-24 border-y border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 mb-4">
-            <span className="text-xs font-medium text-primary">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-4">
+            <span className="text-xs font-mono text-muted-foreground">
               Complete Syllabus
             </span>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-            All Subjects <span className="text-gradient">Fully Covered</span>
+          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+            All Subjects Fully Covered
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Every topic from JEE Main and Advanced syllabus, organised for
@@ -153,8 +164,8 @@ export default function SubjectsSection() {
           </p>
         </div>
 
-        <Tabs defaultValue="physics">
-          <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto mb-10 bg-muted/50">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto mb-10 bg-white/5 border border-border">
             <TabsTrigger data-ocid="subjects.tab.1" value="physics">
               ⚡ Physics
             </TabsTrigger>
@@ -168,21 +179,25 @@ export default function SubjectsSection() {
 
           {(["physics", "chemistry", "mathematics"] as const).map((subject) => (
             <TabsContent key={subject} value={subject}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {subjects[subject].map((group) => (
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 tab-content-enter"
+                key={subject === activeTab ? tabKey : subject}
+              >
+                {subjects[subject].map((group, i) => (
                   <div
                     key={group.category}
-                    className="glass-card rounded-xl p-5"
+                    className="glass-card rounded-xl p-5 tab-card-stagger"
+                    style={{ animationDelay: `${i * 60}ms` }}
                   >
-                    <h3 className="font-display font-bold text-base text-primary mb-3">
+                    <h3 className="font-display font-bold text-sm text-foreground mb-3 uppercase tracking-wider">
                       {group.category}
                     </h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {group.topics.map((topic) => (
                         <Badge
                           key={topic}
                           variant="secondary"
-                          className="text-xs bg-secondary/60 text-secondary-foreground hover:bg-primary/20 hover:text-primary cursor-default transition-colors"
+                          className="text-xs bg-white/5 text-muted-foreground border border-white/8 hover:bg-white/10 hover:text-foreground cursor-default transition-colors"
                         >
                           {topic}
                         </Badge>
