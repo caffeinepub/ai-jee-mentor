@@ -117,9 +117,18 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground font-mono">
-            © {year} AI JEE Mentor. All rights reserved.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-xs text-muted-foreground font-mono">
+              © {year} AI JEE Mentor. All rights reserved.
+            </p>
+            <a
+              href="/privacy-policy"
+              data-ocid="footer.privacy_policy.link"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </div>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             Built with <Heart className="w-3 h-3 text-red-400 inline" /> using{" "}
             <a

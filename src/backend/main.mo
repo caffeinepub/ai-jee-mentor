@@ -76,7 +76,7 @@ actor {
   func openRouterHeaders() : [OutCall.Header] {
     [
       { name = "Content-Type"; value = "application/json" },
-      { name = "Authorization"; value = "Bearer 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" },
+      { name = "Authorization"; value = "Bearer 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" },
       { name = "HTTP-Referer"; value = "https://caffeine.ai" },
     ];
   };
