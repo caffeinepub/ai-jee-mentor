@@ -969,7 +969,7 @@ export default function SolverSection() {
             {solving ? (
               <>
                 <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                {retrying ? "Reconnecting..." : "Solving..."}
+                {retrying ? "Reconnecting..." : "Generating..."}
               </>
             ) : (
               <>
@@ -983,11 +983,9 @@ export default function SolverSection() {
 
           {solving && (
             <div data-ocid="solver.loading_state" className="mt-6 space-y-3">
-              {retrying && (
-                <p className="text-xs text-muted-foreground text-center animate-pulse">
-                  Server restarting, retrying automatically...
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground text-center animate-pulse">
+                {retrying ? "Reconnecting..." : "Generating response..."}
+              </p>
               {SKELETON_WIDTHS.map(({ id, w }) => (
                 <div
                   key={id}

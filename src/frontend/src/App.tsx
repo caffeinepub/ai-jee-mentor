@@ -1,16 +1,18 @@
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
-import DashboardSection from "./components/DashboardSection";
-import FeaturesSection from "./components/FeaturesSection";
-import Footer from "./components/Footer";
-import FutureSection from "./components/FutureSection";
+import { Suspense, lazy } from "react";
 import HeroSection from "./components/HeroSection";
-import MarqueeStrip from "./components/MarqueeStrip";
 import Navbar from "./components/Navbar";
-import PracticeSection from "./components/PracticeSection";
 import SolverSection from "./components/SolverSection";
-import SubjectsSection from "./components/SubjectsSection";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+
+const MarqueeStrip = lazy(() => import("./components/MarqueeStrip"));
+const FeaturesSection = lazy(() => import("./components/FeaturesSection"));
+const SubjectsSection = lazy(() => import("./components/SubjectsSection"));
+const DashboardSection = lazy(() => import("./components/DashboardSection"));
+const PracticeSection = lazy(() => import("./components/PracticeSection"));
+const FutureSection = lazy(() => import("./components/FutureSection"));
+const Footer = lazy(() => import("./components/Footer"));
 
 function HomePage() {
   return (
@@ -18,15 +20,19 @@ function HomePage() {
       <Navbar />
       <main>
         <HeroSection />
-        <MarqueeStrip />
-        <FeaturesSection />
-        <SubjectsSection />
-        <DashboardSection />
-        <SolverSection />
-        <PracticeSection />
-        <FutureSection />
+        <Suspense fallback={<div className="py-8" />}>
+          <MarqueeStrip />
+          <FeaturesSection />
+          <SubjectsSection />
+          <DashboardSection />
+          <SolverSection />
+          <PracticeSection />
+          <FutureSection />
+        </Suspense>
       </main>
-      <Footer />
+      <Suspense fallback={<div className="py-4" />}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

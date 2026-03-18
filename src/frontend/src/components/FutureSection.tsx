@@ -78,13 +78,6 @@ export default function FutureSection() {
                 <p className="text-muted-foreground text-sm leading-relaxed pr-20">
                   {feature.description}
                 </p>
-                <div
-                  className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full opacity-10 group-hover:opacity-20 transition-opacity"
-                  style={{
-                    background: "oklch(0.72 0.155 215)",
-                    filter: "blur(30px)",
-                  }}
-                />
               </div>
             );
           })}

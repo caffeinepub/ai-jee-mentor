@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
 // Word-by-word headline split
 const HEADLINE_WORDS = [
@@ -13,78 +12,19 @@ const HEADLINE_WORDS = [
   "Preparation",
 ];
 
-// Stats that count up
+// Static stats
 const STATS = [
-  {
-    raw: 10000,
-    display: "10,000+",
-    label: "Questions Solved",
-    countable: true,
-  },
-  { raw: 3, display: "3 Subjects", label: "Fully Covered", countable: false },
-  {
-    raw: 98,
-    display: "98%",
-    label: "Student Satisfaction",
-    countable: true,
-    suffix: "%",
-  },
-  { raw: 0, display: "24/7", label: "AI Availability", countable: false },
+  { display: "10,000+", label: "Questions Solved" },
+  { display: "3 Subjects", label: "Fully Covered" },
+  { display: "98%", label: "Student Satisfaction" },
+  { display: "24/7", label: "AI Availability" },
 ];
 
-function useCountUp(target: number, duration = 1500, start = false) {
-  const [count, setCount] = useState(0);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!start) return;
-    const startTime = performance.now();
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - (1 - progress) ** 3;
-      setCount(Math.round(eased * target));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, duration, start]);
-
-  return count;
-}
-
-function StatItem({
-  stat,
-  statsVisible,
-}: {
-  stat: (typeof STATS)[0];
-  statsVisible: boolean;
-}) {
-  const count = useCountUp(stat.raw, 1400, statsVisible && stat.countable);
-
-  let display: string;
-  if (stat.countable && statsVisible) {
-    if (stat.raw === 10000) {
-      display = count >= 10000 ? "10,000+" : count.toLocaleString();
-    } else {
-      display = `${count}${stat.suffix ?? ""}`;
-    }
-  } else {
-    display = stat.display;
-  }
-
+function StatItem({ stat }: { stat: (typeof STATS)[0] }) {
   return (
-    <div
-      className="transition-all duration-700"
-      style={{
-        opacity: statsVisible ? 1 : 0,
-        transform: statsVisible ? "translateY(0)" : "translateY(16px)",
-      }}
-    >
+    <div>
       <div className="text-2xl font-display font-bold text-foreground">
-        {display}
+        {stat.display}
       </div>
       <div className="text-xs text-muted-foreground mt-0.5 font-mono">
         {stat.label}
@@ -93,78 +33,7 @@ function StatItem({
   );
 }
 
-function MagneticButton({
-  children,
-  className,
-  onClick,
-  variant,
-  "data-ocid": dataOcid,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-  variant?: "default" | "outline";
-  "data-ocid"?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    el.style.transform = `translate(${x * 0.18}px, ${y * 0.18}px)`;
-  };
-
-  const handleMouseLeave = () => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.transform = "translate(0, 0)";
-    el.style.transition = "transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)";
-  };
-
-  return (
-    <div
-      ref={ref}
-      className="inline-block"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ transition: "transform 0.1s ease" }}
-    >
-      <Button
-        data-ocid={dataOcid}
-        size="lg"
-        variant={variant}
-        className={className}
-        onClick={onClick}
-      >
-        {children}
-      </Button>
-    </div>
-  );
-}
-
 export default function HeroSection() {
-  const statsRef = useRef<HTMLDivElement>(null);
-  const [statsVisible, setStatsVisible] = useState(false);
-
-  useEffect(() => {
-    const el = statsRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setStatsVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.3 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   const scrollTo = (id: string) => {
     document.querySelector(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -218,38 +87,35 @@ export default function HeroSection() {
             with step-by-step AI guidance.
           </p>
 
-          {/* CTAs — Magnetic */}
+          {/* CTAs */}
           <div
             className="flex flex-col sm:flex-row gap-4 animate-slide-up"
             style={{ animationDelay: "0.9s", opacity: 0 }}
           >
-            <MagneticButton
+            <Button
               data-ocid="hero.primary_button"
+              size="lg"
               className="bg-foreground text-background hover:bg-foreground/90 font-semibold text-base px-8 h-12 group"
               onClick={() => scrollTo("#solver")}
             >
               Start Solving Questions
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </MagneticButton>
-            <MagneticButton
+            </Button>
+            <Button
               data-ocid="hero.secondary_button"
+              size="lg"
               variant="outline"
               className="border-border hover:border-white/40 hover:bg-white/5 text-foreground font-semibold text-base px-8 h-12"
               onClick={() => scrollTo("#features")}
             >
               Explore Features
-            </MagneticButton>
+            </Button>
           </div>
 
-          {/* Stats with count-up */}
-          <div
-            ref={statsRef}
-            className="mt-16 flex flex-wrap gap-x-12 gap-y-6 pt-8 border-t border-border"
-          >
-            {STATS.map((stat, i) => (
-              <div key={stat.label} style={{ transitionDelay: `${i * 120}ms` }}>
-                <StatItem stat={stat} statsVisible={statsVisible} />
-              </div>
+          {/* Stats — static */}
+          <div className="mt-16 flex flex-wrap gap-x-12 gap-y-6 pt-8 border-t border-border">
+            {STATS.map((stat) => (
+              <StatItem key={stat.label} stat={stat} />
             ))}
           </div>
         </div>

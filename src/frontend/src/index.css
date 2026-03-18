@@ -128,20 +128,6 @@
   }
 }
 
-/* Word reveal clip */
-@keyframes word-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(40px) skewY(3deg);
-    clip-path: inset(100% 0 0 0);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) skewY(0deg);
-    clip-path: inset(0% 0 0 0);
-  }
-}
-
 /* Tab content fade-in */
 @keyframes tab-fade-in {
   from {
@@ -177,11 +163,10 @@
   animation: fade-in 0.8s ease-out forwards;
 }
 
-/* Word-by-word headline reveal */
+/* Word-by-word headline reveal — simplified to fade */
 .word-reveal {
-  animation: word-reveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in 0.5s ease-out both;
   display: inline-block;
-  overflow: hidden;
 }
 
 /* Marquee strip */
@@ -206,8 +191,7 @@
 }
 
 .glass-card {
-  background: oklch(0.1 0.008 250 / 0.8);
-  backdrop-filter: blur(12px);
+  background: oklch(0.1 0.008 250 / 0.95);
   border: 1px solid oklch(0.18 0.01 250 / 0.9);
 }
 
@@ -227,8 +211,7 @@
 }
 
 .nav-blur {
-  background: oklch(0.07 0.008 250 / 0.9);
-  backdrop-filter: blur(20px);
+  background: oklch(0.07 0.008 250 / 0.96);
   border-bottom: 1px solid oklch(0.18 0.01 250 / 0.6);
 }
 
@@ -264,25 +247,6 @@
 .solution-step {
   animation: slide-up 0.4s ease-out forwards;
   opacity: 0;
-}
-
-.solution-step:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.solution-step:nth-child(2) {
-  animation-delay: 0.4s;
-}
-.solution-step:nth-child(3) {
-  animation-delay: 0.7s;
-}
-.solution-step:nth-child(4) {
-  animation-delay: 1.0s;
-}
-.solution-step:nth-child(5) {
-  animation-delay: 1.3s;
-}
-.solution-step:nth-child(6) {
-  animation-delay: 1.6s;
 }
 
 /* Reduced motion */
